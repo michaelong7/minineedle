@@ -51,15 +51,6 @@ class WatermanEggert(SmithWaterman[ItemToAlign]):
                 self._used_indices.copy(),
                 self._seq1_start,
                 self._seq2_start)
-        print(self.alignments[0]._alseq1)
-        print(self.alignments[0]._alseq2)
-        print(self.alignments[0]._seq1_start)
-        print(self.alignments[0]._seq2_start)
-
-        print(self.alignments[1]._alseq1)
-        print(self.alignments[1]._alseq2)
-        print(self.alignments[1]._seq1_start)
-        print(self.alignments[1]._seq2_start)
 
     
     def _align(self) -> None:
