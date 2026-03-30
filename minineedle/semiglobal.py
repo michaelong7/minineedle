@@ -93,10 +93,10 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         return imax, jmax
     
     def _check_best_score(self, diagscore: int, topscore: int, leftscore: int, irow: int, jcol: int) -> None:
-        best_pointer = str()
+        best_pointer: Optional[str] = ""
         best_score = int()
         if (irow + 1, jcol + 1) in self._used_indices:
-            best_pointer = ""
+            best_pointer = None
             best_score = self._nmatrix[len(self._nmatrix) - 1][jcol] - 1000
         else:
             if diagscore >= topscore:
@@ -140,9 +140,6 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         self._identity = (self._identity / len(self._alseq1)) * 100
         self._seq1_start = jcol
         self._seq2_start = irow
-
-    def _remove_used_indices(self) -> None:
-        pass
 
 class Gap(object):
     def __init__(self, character: str = "-") -> None:
