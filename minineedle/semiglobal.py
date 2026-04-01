@@ -92,23 +92,33 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
                 max_score = score
         return imax, jmax
     
+    def _fill_matrices(self) -> None:
+        for irow in range(0, len(self.seq2)):
+            for jcol in range(0, len(self.seq1)):
+                # Scores
+                topscore = self._nmatrix[irow][jcol + 1] + self.smatrix.gap if (irow, jcol + 1) not in self._used_indices else -1000
+                leftscore = self._nmatrix[irow + 1][jcol] + self.smatrix.gap if (irow + 1, jcol) not in self._used_indices else -1000
+                diagscore = self._nmatrix[irow][jcol] if (irow, jcol) not in self._used_indices else -1000
+                if self.seq1[jcol] == self.seq2[irow]:
+                    diagscore += self.smatrix.match
+                else:
+                    diagscore += self.smatrix.miss
+
+                self._check_best_score(diagscore, topscore, leftscore, irow, jcol)
+
     def _check_best_score(self, diagscore: int, topscore: int, leftscore: int, irow: int, jcol: int) -> None:
-        best_pointer: Optional[str] = ""
+        best_pointer = str()
         best_score = int()
-        if (irow + 1, jcol + 1) in self._used_indices:
-            best_pointer = None
-            best_score = self._nmatrix[len(self._nmatrix) - 1][jcol] - 1000
-        else:
-            if diagscore >= topscore:
-                if diagscore >= leftscore:
-                    best_pointer, best_score = ("diag", diagscore)
-                else:
-                    best_pointer, best_score = ("left", leftscore)
+        if diagscore >= topscore:
+            if diagscore >= leftscore:
+                best_pointer, best_score = ("diag", diagscore)
             else:
-                if topscore > leftscore:
-                    best_pointer, best_score = ("up", topscore)
-                else:
-                    best_pointer, best_score = ("left", leftscore)
+                best_pointer, best_score = ("left", leftscore)
+        else:
+            if topscore > leftscore:
+                best_pointer, best_score = ("up", topscore)
+            else:
+                best_pointer, best_score = ("left", leftscore)
 
         self._pmatrix[irow + 1][jcol + 1] = best_pointer
         self._nmatrix[irow + 1][jcol + 1] = best_score
