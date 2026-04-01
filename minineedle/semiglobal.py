@@ -30,6 +30,7 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         self.alignments = {}
         self._seq1_start = 0
         self._seq2_start = 0
+        self.count = 0
 
     def k_align(self, kbest: int) -> None:
         """
@@ -82,13 +83,13 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         the alignment ends. For semiglobal, this is the cell in the last row 
         with the highest score.
         """
-        jmax = 0
+        imax = 0
         max_score = 0
-        imax = len(self._nmatrix) - 1
-        for jcol in range(0, len(self._nmatrix[0])):
-            score = self._nmatrix[imax][jcol]
+        jmax = len(self._nmatrix[0]) - 1
+        for irow in range(0, len(self._nmatrix)):
+            score = self._nmatrix[irow][jmax]
             if score > max_score:
-                jmax = jcol
+                imax = irow
                 max_score = score
         return imax, jmax
     
@@ -96,14 +97,13 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         for irow in range(0, len(self.seq2)):
             for jcol in range(0, len(self.seq1)):
                 # Scores
-                topscore = self._nmatrix[irow][jcol + 1] + self.smatrix.gap if (irow, jcol + 1) not in self._used_indices else -1000
-                leftscore = self._nmatrix[irow + 1][jcol] + self.smatrix.gap if (irow + 1, jcol) not in self._used_indices else -1000
-                diagscore = self._nmatrix[irow][jcol] if (irow, jcol) not in self._used_indices else -1000
+                topscore = self._nmatrix[irow][jcol + 1] + self.smatrix.gap if (irow, jcol + 1) not in self._used_indices else 0
+                leftscore = self._nmatrix[irow + 1][jcol] + self.smatrix.gap if (irow + 1, jcol) not in self._used_indices else 0
+                diagscore = self._nmatrix[irow][jcol] if (irow, jcol) not in self._used_indices else 0
                 if self.seq1[jcol] == self.seq2[irow]:
                     diagscore += self.smatrix.match
                 else:
                     diagscore += self.smatrix.miss
-
                 self._check_best_score(diagscore, topscore, leftscore, irow, jcol)
 
     def _check_best_score(self, diagscore: int, topscore: int, leftscore: int, irow: int, jcol: int) -> None:
