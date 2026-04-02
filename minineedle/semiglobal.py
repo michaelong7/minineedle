@@ -2,19 +2,16 @@ from typing import Optional, Sequence, Any
 
 from minineedle.needle import NeedlemanWunsch
 from copy import deepcopy
+from collections import defaultdict
 from minineedle.typesvars import ItemToAlign
 
 class Alignment_Data():
-    def __init__(self, _alseq1, _alseq2, smatrix, _score, _identity, _nmatrix, _pmatrix, _gap_character, _used_indices, _seq1_start, _seq2_start) -> None:
+    def __init__(self, _alseq1, _alseq2, _score, _identity, _gap_character, _seq1_start, _seq2_start) -> None:
         self._alseq1 = _alseq1
         self._alseq2 = _alseq2
-        self.smatrix = smatrix
         self._score = _score
         self._identity = _identity
-        self._nmatrix = _nmatrix
-        self._pmatrix = _pmatrix
         self._gap_character = _gap_character
-        self._used_indices = _used_indices
         self._seq1_start = _seq1_start
         self._seq2_start = _seq2_start
 
@@ -26,7 +23,6 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
 
     def __init__(self, seq1: Sequence[ItemToAlign], seq2: Sequence[ItemToAlign]) -> None:
         super().__init__(seq1, seq2)
-        self._used_indices = []
         self.alignments = {}
         self._seq1_start = 0
         self._seq2_start = 0
@@ -37,24 +33,21 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         Performs k semiglobal alignments with the given sequences and the
         corresponding ScoreMatrix.
         """
+        self._used_score_indices = defaultdict(list)
         if kbest not in self.alignments.keys():
             for i in range(kbest):
-                self._align()
+                self._align(i)
                 self.alignments[i] = Alignment_Data(
                 self._alseq1.copy(),
                 self._alseq2.copy(),
-                self.smatrix,
                 self._score,
                 self._identity,
-                deepcopy(self._nmatrix),
-                deepcopy(self._pmatrix),
                 self._gap_character,
-                self._used_indices.copy(),
                 self._seq1_start,
                 self._seq2_start)
 
     
-    def _align(self) -> None:
+    def _align(self, kth: int) -> None:
         """
         Performs a semiglobal alignment with the given sequences and the
         corresponding ScoreMatrix.
@@ -63,7 +56,7 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         self._add_gap_penalties()
         self._fill_matrices()
 
-        imax, jmax = self._get_last_cell_position()
+        imax, jmax = self._get_last_cell_position(kth)
         self._get_alignment_score(imax, jmax)
         self._trace_back_alignment(imax, jmax)
 
@@ -77,29 +70,30 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         for i in range(1, len(self.seq2) + 1):
             self._nmatrix[i][0] = self._nmatrix[i - 1][0] + self.smatrix.gap
 
-    def _get_last_cell_position(self) -> tuple[int, int]:
+    def _get_last_cell_position(self, kth: int) -> tuple[int, int]:
         """
         Returns the cell row and column of the last cell in the matrix in which
-        the alignment ends. For semiglobal, this is the cell in the last row 
-        with the highest score.
+        the alignment ends. For semiglobal, this is the cell in the last column 
+        with the kth highest score.
         """
-        imax = 0
-        max_score = 0
         jmax = len(self._nmatrix[0]) - 1
-        for irow in range(0, len(self._nmatrix)):
-            score = self._nmatrix[irow][jmax]
-            if score > max_score:
-                imax = irow
-                max_score = score
+        max_col = [self._nmatrix[irow][jmax] for irow in range(0, len(self._nmatrix))]
+        try:
+            kth_score = sorted(max_col, reverse=True)[kth]
+        except IndexError:
+            print(max_col)
+            print(kth)
+        imax = next(index for index, score in enumerate(max_col) if score == kth_score and index not in self._used_score_indices[kth_score])
+        self._used_score_indices[kth_score].append(imax)
         return imax, jmax
     
     def _fill_matrices(self) -> None:
         for irow in range(0, len(self.seq2)):
             for jcol in range(0, len(self.seq1)):
                 # Scores
-                topscore = self._nmatrix[irow][jcol + 1] + self.smatrix.gap if (irow, jcol + 1) not in self._used_indices else 0
-                leftscore = self._nmatrix[irow + 1][jcol] + self.smatrix.gap if (irow + 1, jcol) not in self._used_indices else 0
-                diagscore = self._nmatrix[irow][jcol] if (irow, jcol) not in self._used_indices else 0
+                topscore = self._nmatrix[irow][jcol + 1] + self.smatrix.gap
+                leftscore = self._nmatrix[irow + 1][jcol] + self.smatrix.gap
+                diagscore = self._nmatrix[irow][jcol]
                 if self.seq1[jcol] == self.seq2[irow]:
                     diagscore += self.smatrix.match
                 else:
@@ -127,7 +121,6 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         self._alseq1, self._alseq2 = [], []
         
         while True:
-            self._used_indices.append((irow, jcol))
             if self._pmatrix[irow][jcol] == "diag":
                 self._alseq1.append(self.seq1[jcol - 1])
                 self._alseq2.append(self.seq2[irow - 1])
