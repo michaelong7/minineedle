@@ -18,7 +18,7 @@ class Alignment_Data():
 
 class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
     """
-    Semi-global algorithm that ignores gaps at the start and end of the first (reference) string.
+    Semi-global algorithm that ignores gaps at the start and end of the second (reference) string.
     """
 
     def __init__(self, seq1: Sequence[ItemToAlign], seq2: Sequence[ItemToAlign]) -> None:
@@ -65,10 +65,10 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         Fills number matrix first row and first column with the gap penalties.
         """
         for j in range(1, len(self.seq1) + 1):
-            self._nmatrix[0][j] = 0
+            self._nmatrix[0][j] = self._nmatrix[0][j - 1] + self.smatrix.gap
 
         for i in range(1, len(self.seq2) + 1):
-            self._nmatrix[i][0] = self._nmatrix[i - 1][0] + self.smatrix.gap
+            self._nmatrix[i][0] = 0
 
     def _get_last_cell_position(self, kth: int) -> tuple[int, int]:
         """
@@ -78,11 +78,7 @@ class SemiGlobal(NeedlemanWunsch[ItemToAlign]):
         """
         jmax = len(self._nmatrix[0]) - 1
         max_col = [self._nmatrix[irow][jmax] for irow in range(0, len(self._nmatrix))]
-        try:
-            kth_score = sorted(max_col, reverse=True)[kth]
-        except IndexError:
-            print(max_col)
-            print(kth)
+        kth_score = sorted(max_col, reverse=True)[kth]
         imax = next(index for index, score in enumerate(max_col) if score == kth_score and index not in self._used_score_indices[kth_score])
         self._used_score_indices[kth_score].append(imax)
         return imax, jmax
